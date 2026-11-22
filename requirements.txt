@@ -1,0 +1,6 @@
+Flask>=3.0
+gunicorn>=21
+opencv-python-headless>=4.8   # or: sudo apt install python3-opencv (see README)
+numpy>=1.24
+Pillow>=9.0
+PyMuPDF>=1.23                 # PDF input; optional if poppler-utils (pdftoppm) is installed

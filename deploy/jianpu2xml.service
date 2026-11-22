@@ -1,0 +1,20 @@
+# systemd unit for the Raspberry Pi.
+#   sudo cp deploy/jianpu2xml.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now jianpu2xml
+# Edit User / paths below if your user isn't "pi" or the app lives elsewhere.
+[Unit]
+Description=Jianpu to MusicXML web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/jianpu2xml
+Environment=JIANPU_DATA=/home/pi/jianpu2xml-data
+# Environment=JIANPU_PASSWORD=change-me
+ExecStart=/home/pi/jianpu2xml/.venv/bin/gunicorn -w 2 -t 300 -b 0.0.0.0:8080 app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jianpu → MusicXML</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ctext x=%224%22 y=%2226%22 font-size=%2226%22 font-weight=%22bold%22 fill=%22%23b4381f%22%3E5%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body>
+<header class="topbar">
+  <h1>简谱 <span>→ MusicXML</span> <small class="ver" title="jianpu2xml version">v{{ version }}</small></h1>
+  <div class="spacer"></div>
+  <button class="ghost" id="btnLibrary" title="Notation saved on this server">Library</button>
+  <button class="ghost" id="btnHelp">Syntax</button>
+</header>
+
+<div class="dropzone" aria-hidden="true"><div><p>Drop a <b>JPG / PNG / PDF</b> scan to upload it<br><small>a <b>MusicXML / .mxl</b> file to convert it to jianpu, or a <b>.txt</b> file to open it</small></p></div></div>
+<main class="layout">
+  <!-- left: scan / preview -->
+  <section class="pane" id="leftPane">
+    <div class="tabs">
+      <button class="tab active" data-tab="scan">Scan</button>
+      <button class="tab" data-tab="preview">Jianpu preview</button>
+      <button class="tab" data-tab="score">Manuscript</button>
+    </div>
+
+    <div class="tabbody" id="tab-scan">
+      <div class="row wrap">
+        <label class="btn primary file">
+          <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,.bmp,.tif,.tiff,.webp,image/*,application/pdf">
+          Upload JPG / PNG / PDF
+        </label>
+        <span id="scanName" class="muted"></span>
+      </div>
+
+      <details class="ocrbox" id="ocrBox" open>
+        <summary>Read notes from the scan</summary>
+        <div class="grid">
+          <label>Key (1=)
+            <select id="ocrKey">{% for k in keys %}<option{% if k=='C' %} selected{% endif %}>{{ k }}</option>{% endfor %}</select>
+          </label>
+          <label>Time <input id="ocrTime" value="4/4" size="5"></label>
+          <label class="wide">Title <input id="ocrTitle" placeholder="optional"></label>
+          <label>Page <select id="ocrPage"><option value="all">All</option></select></label>
+        </div>
+        <div class="row wrap">
+          <label class="check"><input type="checkbox" id="ocrBlack" checked> Black ink only (ignore coloured marks &amp; highlights)</label>
+          <label class="check"><input type="checkbox" id="ocrChords" checked> Read chord numbers</label>
+        </div>
+        <div class="row">
+          <button class="primary" id="btnRecognize" disabled>Read notes</button>
+          <span id="ocrStatus" class="muted"></span>
+        </div>
+      </details>
+
+      <div class="viewerbar row">
+        <button class="small" id="pgPrev">◀</button>
+        <span id="pgLabel" class="muted">No scan</span>
+        <button class="small" id="pgNext">▶</button>
+        <label class="check"><input type="checkbox" id="showOverlay"> Show what was detected</label>
+        <div class="spacer"></div>
+        <button class="small" id="zoomOut">−</button>
+        <button class="small" id="zoomFit">Fit</button>
+        <button class="small" id="zoomIn">+</button>
+      </div>
+      <div class="viewer" id="viewer"><div class="empty">Upload a scan, or drag and drop one anywhere on this page.</div></div>
+    </div>
+
+    <div class="tabbody hidden" id="tab-preview">
+      <div class="row"><button id="btnPreview">Refresh</button>
+        <span class="muted">How the text below reads as jianpu. Compare it with the scan.</span></div>
+      <div class="viewer" id="previewBox"><div class="empty">Click Refresh.</div></div>
+    </div>
+    <div class="tabbody hidden" id="tab-score">
+      <div class="row wrap">
+        <button id="btnScore">Refresh</button>
+        <label class="check"><input type="checkbox" id="scoreAuto" checked> Update while typing</label>
+        <span class="muted" id="scoreInfo">Staff notation of the text, with transpose / clef / octave applied.</span>
+        <div class="spacer"></div>
+        <button class="small" id="scoreOut">−</button>
+        <button class="small" id="scoreZoomLabel" title="Reset zoom">100%</button>
+        <button class="small" id="scoreIn">+</button>
+        <button class="small" id="scorePrint" title="Print or save as PDF">Print</button>
+      </div>
+      <div class="viewer score" id="scoreBox"><div class="empty">Open this tab to draw the score.</div></div>
+    </div>
+  </section>
+
+  <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" title="Drag to resize · double-click to reset"></div>
+
+  <!-- right: editor -->
+  <section class="pane" id="rightPane">
+    <div class="row wrap toolbar">
+      <label>Transpose
+        <select id="optTranspose">{% for t, label in transposes %}<option value="{{ t }}"{% if t==0 %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      </label>
+      <label>Spelling <select id="optEnh"><option>auto</option><option>sharps</option><option>flats</option></select></label>
+      <label>Octave <select id="optOct"><option>auto</option><option>+2</option><option>+1</option><option selected>0</option><option>-1</option><option>-2</option></select></label>
+      <label>Clef <select id="optClef"><option>treble</option><option>bass</option></select></label>
+      <span class="keyinfo" id="keyInfo"></span>
+    </div>
+
+    <div class="row wrap transport">
+      <button class="primary" id="btnPlay" title="Play (from the note under the cursor, if any)">▶ Play</button>
+      <button id="btnStop" title="Stop (Esc)" disabled>■ Stop</button>
+      <label>Tempo <input id="playBpm" type="number" min="20" max="320" step="1" placeholder="90" style="width:4.5em"> bpm</label>
+      <label class="check"><input type="checkbox" id="playChords" checked> Chords</label>
+      <label class="check"><input type="checkbox" id="playFollow" checked> Highlight as it plays</label>
+      <span class="muted" id="playPos"></span>
+      <div class="spacer"></div>
+      <button class="ghost" id="btnMidi">Download .mid</button>
+    </div>
+
+    <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+
+    <div class="row wrap">
+      <button class="primary" id="btnExport">Download .musicxml</button>
+      <button id="btnExportMxl">.mxl</button>
+      <button id="btnPdf">Export PDF…</button>
+      <div class="spacer"></div>
+      <button id="btnSave">Save to library</button>
+      <button class="ghost" id="btnDownloadTxt">Download text</button>
+      <label class="btn ghost file" title="Jianpu text, or MusicXML (.musicxml / .xml / .mxl) to convert"><input type="file" id="txtInput" accept=".txt,.musicxml,.xml,.mxl,text/plain">Open text / MusicXML</label>
+    </div>
+
+    <div class="messages">
+      <div class="msghead"><span id="status">Ready</span></div>
+      <ul id="msgList"></ul>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlgLibrary">
+  <h2>Library <small class="muted">notation saved on this server</small></h2>
+  <ul id="libList" class="liblist"></ul>
+  <div class="row"><div class="spacer"></div><button id="libClose">Close</button></div>
+</dialog>
+
+<dialog id="dlgPdf">
+  <h2>Export PDF</h2>
+  <form method="dialog" id="pdfForm" class="pdfform">
+    <label>Title <input id="pdfTitle"></label>
+    <label>Subtitle <input id="pdfSubtitle" placeholder="optional"></label>
+    <label>Composer <input id="pdfComposer" placeholder="optional"></label>
+    <label>Lyricist <input id="pdfLyricist" placeholder="optional"></label>
+    <label>Arranger <input id="pdfArranger" placeholder="optional"></label>
+    <div class="row wrap">
+      <span class="muted">Include</span>
+      <label class="check"><input type="radio" name="pdfWhat" value="both" checked> Manuscript + jianpu</label>
+      <label class="check"><input type="radio" name="pdfWhat" value="score"> Manuscript only</label>
+      <label class="check"><input type="radio" name="pdfWhat" value="jianpu"> Jianpu only</label>
+    </div>
+    <div class="row wrap">
+      <label>Paper <select id="pdfPaper"><option>A4</option><option>Letter</option></select></label>
+      <label class="check"><input type="checkbox" id="pdfSaveHeader"> Also write these into the text header</label>
+    </div>
+    <p class="muted small" id="pdfNote">Uses the current Transpose / Spelling / Octave / Clef settings.</p>
+    <div class="row"><span id="pdfStatus" class="muted"></span><div class="spacer"></div>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button class="primary" id="pdfGo" value="go">Create PDF</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgHelp">
+  <h2>Jianpu text syntax <small class="muted">· jianpu2xml v{{ version }}</small></h2>
+  <pre>{{ syntax }}</pre>
+  <div class="row"><div class="spacer"></div><button id="helpClose">Close</button></div>
+</dialog>
+
+<script src="{{ url_for('static', filename='vendor/opensheetmusicdisplay.min.js') }}?v=1.9.9" defer></script>
+<script src="{{ url_for('static', filename='vendor/jspdf.umd.min.js') }}?v=2.5.2" defer></script>
+<script>window.JIANPU2XML_VERSION = "{{ version }}";</script>
+<script src="{{ url_for('static', filename='app.js') }}?v={{ version }}" defer></script>
+</body>
+</html>
