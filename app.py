@@ -1,12 +1,13 @@
 """jianpu2xml web app - Flask, meant for a Raspberry Pi on the home network.
 
-    python app.py                       # dev server on http://0.0.0.0:8080
+    python app.py                       # http://localhost:8080 (HOST=127.0.0.1 keeps it on this computer)
     gunicorn -w 2 -t 300 -b 0.0.0.0:8080 app:app
 
 Environment:
     JIANPU_DATA      data folder (uploads + saved notation)   default ~/jianpu2xml-data
     JIANPU_PASSWORD  if set, the site asks for this password (HTTP basic auth, any user name)
     JIANPU_KEEP_HOURS  how long uploaded scans are kept       default 48
+    HOST / PORT      where python app.py listens               default 0.0.0.0 / 8080
 """
 from __future__ import annotations
 
@@ -370,4 +371,5 @@ def lib_delete(name):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=False, threaded=True)
+    app.run(host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", 8080)),
+            debug=False, threaded=True)

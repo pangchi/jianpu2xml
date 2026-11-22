@@ -1,8 +1,13 @@
-# jianpu2xml · v2.9.0
+# jianpu2xml · v2.9.1
 
-A small web app for a Raspberry Pi on the home network. It reads **jianpu (简谱)** scans
-offline with OpenCV, lets you correct the result as text, **transposes** it, and exports
-**MusicXML** for MuseScore, Sibelius, Dorico and similar programs. No cloud and no API keys.
+A small web app that reads **jianpu (简谱)** scans offline with OpenCV, lets you correct the
+result as text, **transposes** it, and exports **MusicXML** for MuseScore, Sibelius, Dorico and
+similar programs. No cloud and no API keys.
+
+You can **run it locally** on your own Windows, Mac or Linux computer and use it in your browser
+(see [Run it locally](#run-it-locally-windows-macos-linux)). You can also **host it on a
+Raspberry Pi** so every phone and PC on your home network can use it
+(see [Install on the Raspberry Pi](#install-on-the-raspberry-pi)). It is the same app either way.
 
 ```
 ┌─ Scan │ Jianpu preview │ Manuscript ─┬─ Transpose [+2 major 2nd up] Spelling Octave Clef ─┐
@@ -123,6 +128,48 @@ Accuracy:
   on the first pass.
 - **Best results:** use **200–300 dpi** scans or PDFs, with the page flat and well lit.
 
+## Run it locally (Windows, macOS, Linux)
+
+All you need is Python 3.10 or newer; no Pi or server is required. Everything runs on your
+computer, and your scans and library stay in a folder in your home directory.
+
+**Windows** (PowerShell or Command Prompt, in the unzipped folder):
+
+```bat
+py -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python app.py
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python app.py
+```
+
+Then open **http://localhost:8080** in your browser. Press **Ctrl+C** in the terminal to stop it.
+
+- **Keep it private to this computer.** By default, other devices on your Wi-Fi can open
+  `http://<your-PC's-IP>:8080` too. To allow only this computer:
+
+  | System | Command |
+  |---|---|
+  | macOS / Linux | `HOST=127.0.0.1 .venv/bin/python app.py` |
+  | Windows PowerShell | `$env:HOST="127.0.0.1"; .venv\Scripts\python app.py` |
+  | Windows Command Prompt | `set HOST=127.0.0.1` then `.venv\Scripts\python app.py` |
+
+- **Another port:** if 8080 is busy, set `PORT=8090` the same way.
+- **Where data goes:** uploads and the saved-notation library are stored in
+  `~/jianpu2xml-data` (on Windows, `C:\Users\<you>\jianpu2xml-data`). Set `JIANPU_DATA` to
+  use another folder.
+- **PDF scans:** these work out of the box, because PyMuPDF is in `requirements.txt`.
+- **Command line:** no server needed; `python jianpu2xml.py song.txt -t 2` works on its own
+  (see [Command line](#command-line)).
+- **Updating:** unzip the new version over the folder and run
+  `pip install -r requirements.txt` again. Your data folder isn't touched.
+
 ## Install on the Raspberry Pi
 
 Written for Raspberry Pi OS Bookworm (64-bit), but not yet run on a Pi. A page takes about 1 second on a desktop CPU, so expect a few seconds on a Pi 4 or 5.
@@ -162,6 +209,7 @@ journalctl -u jianpu2xml -f                              # logs
 | `JIANPU_PASSWORD` | *(none)* | when set, the browser asks for it (any user name) |
 | `JIANPU_KEEP_HOURS` | `48` | uploaded scans older than this are deleted |
 | `PORT` | `8080` | for `python app.py` only; gunicorn uses `-b` |
+| `HOST` | `0.0.0.0` | for `python app.py` only; `127.0.0.1` keeps it on this computer |
 
 The app is meant for the home network. To reach it from outside, put it behind a VPN
 (Tailscale or WireGuard) rather than forwarding the port.
@@ -172,9 +220,8 @@ The app is meant for the home network. To reach it from outside, put it behind a
   Clean up with `pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless`,
   then `pip install opencv-python-headless`. Since v2.1 the app needs only core functions
   (threshold, morphology, connected components, resize), so most installs work as they are.
-- **Running on Windows** for testing works the same way: `pip install -r requirements.txt`,
-  then `python app.py`, then open http://localhost:8080. Training glyphs come from
-  `C:\Windows\Fonts`.
+- **Running on Windows, a Mac or a Linux PC** is covered in
+  [Run it locally](#run-it-locally-windows-macos-linux).
 - **The first "Read notes" takes a couple of seconds longer**, because the digit classifier is
   trained once and then cached.
 
@@ -275,6 +322,7 @@ restart the service with `sudo systemctl restart jianpu2xml`.
 
 | Version | Changes |
 |---|---|
+| 2.9.1 | README: running locally on Windows/macOS/Linux; `HOST` setting for `python app.py` |
 | 2.9.0 | Version number in the app, CLI, MusicXML, PDF and MIDI; cache-busting for static files |
 | 2.8.0 | In-browser playback that highlights notes as it plays (repeats, endings, D.S./D.C., coda, Fine); tempo override; chord accompaniment; Download .mid |
 | 2.7.0 | MusicXML / .mxl import; Export PDF (manuscript and/or jianpu, custom title/subtitle/credits, A4/Letter); `octave:` header; title credits and line breaks in exported MusicXML |
